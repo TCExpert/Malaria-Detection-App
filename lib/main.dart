@@ -400,14 +400,14 @@ class _HomePageState extends State<HomePage> {
         compressQuality: 100,
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle: 'Cropper',
+            toolbarTitle: 'Malaria Cropper',
             toolbarColor: Colors.deepOrange,
             toolbarWidgetColor: Colors.white,
+            statusBarColor: Colors.deepOrange, // Statusleiste anpassen
             initAspectRatio: CropAspectRatioPreset.original,
             lockAspectRatio: false,
-            // Falls gewünscht: Kreis-Form & feste Ratio
-            // cropStyle: CropStyle.circle,
-            // aspectRatioPresets: [CropAspectRatioPreset.square, CropAspectRatioPreset.original],
+            // Optional: Buttons anpassen
+            hideBottomControls: false, // Zeigt die unteren Buttons an
           ),
         ],
       );

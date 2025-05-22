@@ -39,7 +39,7 @@ dependencies:
   get: any
   http: any
   image: any
-  image_cropper: ^7.1.0
+  image_cropper: ^9.1.0
   dotted_border: ^2.0.0+3
 
 dev_dependencies:
