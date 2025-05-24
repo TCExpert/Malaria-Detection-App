@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:dotted_border/dotted_border.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:malaria_detection/models/sample.dart';
 
 import 'package:tflite_flutter/tflite_flutter.dart';
 
@@ -17,16 +19,14 @@ class MyApp extends StatelessWidget {
 
   // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) =>
-      MaterialApp(
+  Widget build(BuildContext context) => MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Flutter Demo',
         theme: ThemeData(
             highlightColor: const Color(0xFFD0996F),
             canvasColor: const Color(0xFFFDF5EC),
             textTheme: TextTheme(
-              headlineSmall: ThemeData
-                  .light()
+              headlineSmall: ThemeData.light()
                   .textTheme
                   .headlineSmall!
                   .copyWith(color: const Color(0xFFBC764A)),
@@ -43,20 +43,19 @@ class MyApp extends StatelessWidget {
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ButtonStyle(
                 backgroundColor: WidgetStateColor.resolveWith(
-                        (states) => const Color(0xFFBC764A)),
+                    (states) => const Color(0xFFBC764A)),
               ),
             ),
             outlinedButtonTheme: OutlinedButtonThemeData(
               style: ButtonStyle(
                 foregroundColor: WidgetStateColor.resolveWith(
-                      (states) => const Color(0xFFBC764A),
+                  (states) => const Color(0xFFBC764A),
                 ),
                 side: WidgetStateBorderSide.resolveWith(
-                        (states) => const BorderSide(color: Color(0xFFBC764A))),
+                    (states) => const BorderSide(color: Color(0xFFBC764A))),
               ),
             ),
-            colorScheme: ColorScheme
-                .fromSwatch(primarySwatch: Colors.blue)
+            colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue)
                 .copyWith(surface: const Color(0xFFFDF5EC))),
         home: const HomePage(title: 'Malaria Detection'),
       );
@@ -77,6 +76,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  List<Sample>? _samples;
   XFile? _pickedFile;
   CroppedFile? _croppedFile;
 
@@ -111,9 +111,7 @@ class _HomePageState extends State<HomePage> {
     if (kDebugMode) {
       print('Start prediction...');
     }
-    List<int> inputShape = _interpreter
-        .getInputTensor(0)
-        .shape;
+    List<int> inputShape = _interpreter.getInputTensor(0).shape;
     if (kDebugMode) {
       print('Input shape: $inputShape');
     }
@@ -121,34 +119,29 @@ class _HomePageState extends State<HomePage> {
     if (kDebugMode) {
       print('Got image.');
     }
-    img.Image imageInput = img.copyResize(
-        image!,
-        width: inputShape[1],
-        height: inputShape[2]
-    );
+    img.Image imageInput =
+        img.copyResize(image!, width: inputShape[1], height: inputShape[2]);
     if (kDebugMode) {
       print('Resized image.');
     }
     List<List<List<List<double>>>> input = [
-      List.generate(imageInput.height, (int y) =>
-          List.generate(
-              imageInput.width, (int x) {
-            img.Pixel pixel = imageInput.getPixel(x, y);
-            return [
-              (pixel.r) / 255,
-              (pixel.g) / 255,
-              (pixel.b) / 255
-            ];
-          }
-          ))
+      List.generate(
+          imageInput.height,
+          (int y) => List.generate(imageInput.width, (int x) {
+                img.Pixel pixel = imageInput.getPixel(x, y);
+                return [(pixel.r) / 255, (pixel.g) / 255, (pixel.b) / 255];
+              }))
     ];
     if (kDebugMode) {
       print('Got input list.');
     }
-    List output = [[0, 0, 0, 0]];
+    List output = [
+      [0, 0, 0, 0]
+    ];
     _interpreter.run(input, output);
     String result = '';
-    if (output[0][0] > output[0][1] && output[0][0] > output[0][2] &&
+    if (output[0][0] > output[0][1] &&
+        output[0][0] > output[0][2] &&
         output[0][0] > output[0][3]) {
       result = 'Plasmodium falciparum';
     } else if (output[0][1] > output[0][2] && output[0][1] > output[0][3]) {
@@ -171,8 +164,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      Scaffold(
+  Widget build(BuildContext context) => Scaffold(
         appBar: !kIsWeb ? AppBar(title: Text(widget.title)) : null,
         body: Column(
           mainAxisSize: MainAxisSize.max,
@@ -183,13 +175,10 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.all(kIsWeb ? 24.0 : 16.0),
                 child: Text(
                   widget.title,
-                  style: Theme
-                      .of(context)
+                  style: Theme.of(context)
                       .textTheme
                       .displayMedium!
-                      .copyWith(color: Theme
-                      .of(context)
-                      .highlightColor),
+                      .copyWith(color: Theme.of(context).highlightColor),
                 ),
               ),
             Expanded(child: _body()),
@@ -197,20 +186,20 @@ class _HomePageState extends State<HomePage> {
         ),
       );
 
-  Widget _body() =>
-      _croppedFile == null && _pickedFile == null
-          ? _uploaderCard()
-          : _imageCard();
+  Widget _body() => _samples == null
+      ? _uploaderCard()
+      : ((_samples!.length > 1) ? _listCard() : _imageCard());
 
-  Widget _imageCard() =>
-      Center(
+  Widget _listCard() => Center(child: _list(context));
+
+  Widget _imageCard() => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Padding(
               padding:
-              const EdgeInsets.symmetric(horizontal: kIsWeb ? 24.0 : 16.0),
+                  const EdgeInsets.symmetric(horizontal: kIsWeb ? 24.0 : 16.0),
               child: Card(
                 elevation: 4.0,
                 child: Padding(
@@ -226,14 +215,8 @@ class _HomePageState extends State<HomePage> {
       );
 
   Widget _image() {
-    final double screenWidth = MediaQuery
-        .of(context)
-        .size
-        .width;
-    final double screenHeight = MediaQuery
-        .of(context)
-        .size
-        .height;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenHeight = MediaQuery.of(context).size.height;
     if (_croppedFile != null) {
       final String path = _croppedFile!.path;
       return ConstrainedBox(
@@ -257,29 +240,25 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Widget _menu() =>
-      Column(
-          children: [
-            Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FloatingActionButton(
-                    onPressed: () => _clear(),
-                    backgroundColor: Colors.redAccent,
-                    tooltip: 'Delete',
-                    child: const Icon(Icons.delete),
-                  ),
-                  //if (_croppedFile == null)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 32.0),
-                    child: FloatingActionButton(
-                      onPressed: () => _cropImage(),
-                      backgroundColor: const Color(0xFFBC764A),
-                      tooltip: 'Crop',
-                      child: const Icon(Icons.crop),
-                    ),
-                  ),
-                  /*Padding(
+  Widget _menu() => Column(children: [
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          FloatingActionButton(
+            onPressed: () => _clear(),
+            backgroundColor: Colors.redAccent,
+            tooltip: 'Delete',
+            child: const Icon(Icons.delete),
+          ),
+          //if (_croppedFile == null)
+          Padding(
+            padding: const EdgeInsets.only(left: 32.0),
+            child: FloatingActionButton(
+              onPressed: () => _cropImage(),
+              backgroundColor: const Color(0xFFBC764A),
+              tooltip: 'Crop',
+              child: const Icon(Icons.crop),
+            ),
+          ),
+          /*Padding(
             padding: const EdgeInsets.only(left: 32.0),
             child: FloatingActionButton(
               onPressed: () => _autocropImage(File(_croppedFile!.path)),
@@ -288,29 +267,26 @@ class _HomePageState extends State<HomePage> {
               child: const Icon(Icons.transform),
             ),
           ),*/
-                  Padding(
-                    padding: const EdgeInsets.only(left: 32.0),
-                    child: FloatingActionButton(
-                      onPressed: () => classifyImage(File(_croppedFile!.path)),
-                      backgroundColor: const Color(0xFF009256),
-                      tooltip: 'Classify',
-                      child: const Icon(Icons.science),
-                    ),
-                  ),
-
-                ]),
-            Container(
-              margin: const EdgeInsets.all(30.0),
-              child: const Text('Result:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 23)),
+          Padding(
+            padding: const EdgeInsets.only(left: 32.0),
+            child: FloatingActionButton(
+              onPressed: () => classifyImage(File(_croppedFile!.path)),
+              backgroundColor: const Color(0xFF009256),
+              tooltip: 'Classify',
+              child: const Icon(Icons.science),
             ),
-            Text(_result.toString(),
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 23))
-          ]);
+          ),
+        ]),
+        Container(
+          margin: const EdgeInsets.all(30.0),
+          child: const Text('Result:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 23)),
+        ),
+        Text(_result.toString(),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 23))
+      ]);
 
-  Widget _uploaderCard() =>
-      Center(
+  Widget _uploaderCard() => Center(
         child: Card(
           elevation: 4.0,
           shape: RoundedRectangleBorder(
@@ -331,10 +307,7 @@ class _HomePageState extends State<HomePage> {
                       radius: const Radius.circular(12.0),
                       borderType: BorderType.RRect,
                       dashPattern: const [8, 4],
-                      color: Theme
-                          .of(context)
-                          .highlightColor
-                          .withOpacity(0.4),
+                      color: Theme.of(context).highlightColor.withOpacity(0.4),
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -342,32 +315,25 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             Icon(
                               Icons.image,
-                              color: Theme
-                                  .of(context)
-                                  .highlightColor,
+                              color: Theme.of(context).highlightColor,
                               size: 80.0,
                             ),
                             const SizedBox(height: 24.0),
                             Text(
                               'Upload an image to start',
                               style: kIsWeb
-                                  ? Theme
-                                  .of(context)
-                                  .textTheme
-                                  .headlineSmall!
-                                  .copyWith(
-                                  color: Theme
-                                      .of(context)
-                                      .highlightColor)
-                                  : Theme
-                                  .of(context)
-                                  .textTheme
-                                  .bodyMedium!
-                                  .copyWith(
-                                  color:
-                                  Theme
-                                      .of(context)
-                                      .highlightColor),
+                                  ? Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall!
+                                      .copyWith(
+                                          color:
+                                              Theme.of(context).highlightColor)
+                                  : Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium!
+                                      .copyWith(
+                                          color:
+                                              Theme.of(context).highlightColor),
                             )
                           ],
                         ),
@@ -403,7 +369,8 @@ class _HomePageState extends State<HomePage> {
             toolbarTitle: 'Malaria Cropper',
             toolbarColor: Colors.deepOrange,
             toolbarWidgetColor: Colors.white,
-            statusBarColor: Colors.deepOrange, // Statusleiste anpassen
+            statusBarColor: Colors.deepOrange,
+            // Statusleiste anpassen
             initAspectRatio: CropAspectRatioPreset.original,
             lockAspectRatio: false,
             // Optional: Buttons anpassen
@@ -542,27 +509,84 @@ class _HomePageState extends State<HomePage> {
     if (kDebugMode) {
       print('Uploading an image...');
     }
-    final XFile? pickedFile = await ImagePicker().pickImage(
-        source: ImageSource.gallery);
-    if (kDebugMode) {
-      print('Image uploaded.');
+
+    final FilePickerResult? result = await FilePicker.platform
+        .pickFiles(allowMultiple: true, type: FileType.image);
+
+    if (result == null) {
+      return;
     }
-    if (pickedFile != null) {
-      setState(() => _pickedFile = pickedFile);
-      if (kDebugMode) {
-        print('Updated _pickedFile.');
+
+    final List<XFile> pickedFiles = result.files
+        .where((file) => file.path != null)
+        .map((file) => XFile(file.path!))
+        .toList();
+
+    final List<CroppedFile> croppedFiles =
+        pickedFiles.map((file) => CroppedFile(file.path)).toList();
+
+    setState(() {
+      _samples = List.generate(pickedFiles.length, (index) {
+        return Sample(
+            pickedFile: pickedFiles[index], croppedFile: croppedFiles[index]);
+      });
+
+      // TODO: move under following if - when the other stuff works
+      _pickedFile = pickedFiles[0];
+
+      if (pickedFiles.length == 1) {
+        _croppedFile = croppedFiles[0];
       }
-      setState(() => _croppedFile = CroppedFile(pickedFile.path));
-      if (kDebugMode) {
-        print('Updated _croppedFile');
-      }
-    }
+    });
   }
 
-  void _clear() =>
-      setState(() {
+  // TODO: change to delete sample in samples - clear properties
+  void _clear() => setState(() {
         _pickedFile = null;
         _croppedFile = null;
-        _result = "";
+        _result = '';
       });
+
+  ListView _list(BuildContext buildContext) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: _samples!.length,
+      itemBuilder: (BuildContext context, int index) {
+        return Container(
+            padding: const EdgeInsets.all(8),
+            child: _buildSampleRow(_samples![index]));
+      },
+    );
+  }
+
+  Row _buildSampleRow(Sample sample) {
+    return Row(
+      children: [
+        Image.file(
+          File(sample.pickedFile.path),
+          width: 64,
+          height: 64,
+          fit: BoxFit.cover,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                sample.pickedFile.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: const TextStyle(fontSize: 15),
+              ),
+              // Text(
+              //   sample.
+              // ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
