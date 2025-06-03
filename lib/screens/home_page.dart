@@ -1,16 +1,13 @@
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:malaria_detection/services/interpreter_service.dart';
 import 'package:malaria_detection/widgets/sample_list.dart';
-import 'package:tflite_flutter/tflite_flutter.dart';
 
-import '../controllers/image_controller.dart';
 import '../models/sample.dart';
 import '../widgets/image_card.dart';
-import '../widgets/sample_list_item.dart';
 import '../widgets/uploader_card.dart';
 
 class HomePage extends StatefulWidget {
@@ -27,10 +24,6 @@ class _HomePageState extends State<HomePage> {
   XFile? _pickedFile;
   CroppedFile? _croppedFile;
   String? _result;
-  bool _isProcessing = false;
-  bool _showResult = false;
-
-  late final Interpreter _interpreter;
 
   @override
   void initState() {
@@ -38,14 +31,67 @@ class _HomePageState extends State<HomePage> {
     if (kDebugMode) {
       print('Initializing the interpreter...');
     }
-    _loadModel();
+    InterpreterService().getInterpreter();
   }
 
-  Future<void> _loadModel() async {
-    // TODO: Hier evtl. setState() nutzen
-    _interpreter =
-        await Interpreter.fromAsset('../assets/classification.tflite');
+  @override
+  void dispose() {
+    InterpreterService().dispose();
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: !kIsWeb ? AppBar(title: Text(widget.title)) : null,
+      body: Column(
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (kIsWeb)
+            Padding(
+              padding: const EdgeInsets.all(kIsWeb ? 24.0 : 16.0),
+              child: Text(
+                widget.title,
+                style: Theme.of(context)
+                    .textTheme
+                    .displayMedium!
+                    .copyWith(color: Theme.of(context).highlightColor),
+              ),
+            ),
+          Expanded(child: _body()),
+        ],
+      ),
+    );
+  }
+
+  Widget _body() => _samples == null
+      ? _uploaderCard()
+      : ((_samples!.length > 1) ? _listCard() : _imageCard(_samples![0]));
+
+  Widget _uploaderCard() => UploaderCard(
+        onUpload: _uploadImage,
+      );
+
+  Widget _imageCard(Sample sample) => ImageCard(
+        sample: sample,
+        pickedPath: _pickedFile?.path,
+        croppedPath: _croppedFile?.path,
+        onClear: _body,
+        result: _result,
+      );
+
+  Widget _listCard() => Center(
+      child: SampleList(
+          samples: _samples!,
+          onTap: (Sample sample) {
+            setState(() {
+              _pickedFile = sample.pickedFile;
+              _croppedFile = sample.croppedFile;
+            });
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => _imageCard(sample)));
+          }));
 
   Future<void> _uploadImage() async {
     if (kDebugMode) {
@@ -83,122 +129,11 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Future<void> _classifyImage() async {
-    if (_pickedFile == null) return;
-
-    setState(() {
-      _isProcessing = true;
-      _showResult = false;
-    });
-
-    final String result = await ImageController.classifyImage(
-      File(_croppedFile!.path),
-      _interpreter,
-    );
-
-    setState(() {
-      _result = result;
-      _showResult = true;
-      _isProcessing = false;
-    });
-  }
-
   void _clear() {
     setState(() {
       _pickedFile = null;
       _croppedFile = null;
       _result = null;
-      _showResult = false;
     });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: !kIsWeb ? AppBar(title: Text(widget.title)) : null,
-      body: Column(
-        mainAxisSize: MainAxisSize.max,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (kIsWeb)
-            Padding(
-              padding: const EdgeInsets.all(kIsWeb ? 24.0 : 16.0),
-              child: Text(
-                widget.title,
-                style: Theme.of(context)
-                    .textTheme
-                    .displayMedium!
-                    .copyWith(color: Theme.of(context).highlightColor),
-              ),
-            ),
-          Expanded(child: _body()),
-        ],
-      ),
-    );
-  }
-
-  Widget _body() => _samples == null
-      ? _uploaderCard()
-      : ((_samples!.length > 1) ? _listCard() : _imageCard());
-
-  Widget _uploaderCard() => UploaderCard(
-        onUpload: _uploadImage,
-      );
-
-  Widget _imageCard() => ImageCard(
-        pickedPath: _pickedFile?.path,
-        croppedPath: _croppedFile?.path,
-        onClear: _clear,
-        onCrop: _cropImage,
-        onClassify: _classifyImage,
-        result: _result,
-      );
-
-  Widget _listCard() => Center(
-      child: SampleList(
-          samples: _samples!,
-          onTap: (Sample sample) {
-            setState(() {
-              _pickedFile = sample.pickedFile;
-              _croppedFile = sample.croppedFile;
-            });
-            Navigator.push(
-                context, MaterialPageRoute(builder: (context) => _imageCard()));
-          }));
-
-  Future<void> _cropImage() async {
-    if (_pickedFile != null) {
-      if (kDebugMode) {
-        print('Cropping image...');
-      }
-      final CroppedFile? croppedFile = await ImageCropper().cropImage(
-        sourcePath: _pickedFile!.path,
-        compressFormat: ImageCompressFormat.jpg,
-        compressQuality: 100,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Malaria Cropper',
-            toolbarColor: Colors.deepOrange,
-            toolbarWidgetColor: Colors.white,
-            statusBarColor: Colors.deepOrange,
-            // Statusleiste anpassen
-            initAspectRatio: CropAspectRatioPreset.original,
-            lockAspectRatio: false,
-            // Optional: Buttons anpassen
-            hideBottomControls: false, // Zeigt die unteren Buttons an
-          ),
-        ],
-      );
-
-      if (kDebugMode) {
-        print('Image cropped.');
-      }
-      if (croppedFile != null) {
-        setState(() => _croppedFile = croppedFile);
-        if (kDebugMode) {
-          print('Updated _croppedFile.');
-        }
-      }
-    }
   }
 }
