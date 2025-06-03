@@ -1,11 +1,14 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
+
+import '../models/sample.dart';
 
 class ImageController {
   static Future<String> classifyImage(
@@ -97,5 +100,31 @@ class ImageController {
     }
 
     return croppedFile;
+  }
+
+  static Future<List<Sample>> uploadImages() async {
+    if (kDebugMode) {
+      print('Uploading an image...');
+    }
+
+    final FilePickerResult? result = await FilePicker.platform
+        .pickFiles(allowMultiple: true, type: FileType.image);
+
+    if (result == null) {
+      return List.empty();
+    }
+
+    final List<XFile> pickedFiles = result.files
+        .where((file) => file.path != null)
+        .map((file) => XFile(file.path!))
+        .toList();
+
+    final List<CroppedFile> croppedFiles =
+    pickedFiles.map((file) => CroppedFile(file.path)).toList();
+
+    return List.generate(pickedFiles.length, (index) {
+      return Sample(
+          pickedFile: pickedFiles[index], croppedFile: croppedFiles[index]);
+    });
   }
 }

@@ -19,18 +19,12 @@ enum ButtonName {
 
 class ImageCard extends StatefulWidget {
   final Sample sample;
-  final String? pickedPath;
-  final String? croppedPath;
   final VoidCallback onClear;
-  final String? result;
 
   const ImageCard({
     super.key,
     required this.sample,
-    required this.pickedPath,
-    required this.croppedPath,
     required this.onClear,
-    required this.result,
   });
 
   @override
@@ -44,25 +38,17 @@ class _ImageCardState extends State<ImageCard> {
   @override
   void initState() {
     super.initState();
-    _croppedFile = widget.croppedPath != null ? CroppedFile(widget.croppedPath!) : null;
-    _result = widget.result;
+    _croppedFile = widget.sample.croppedFile;
+    _result = widget.sample.result;
   }
-
-  // const ImageCard({
-  //   super.key,
-  //   required this.sample,
-  //   required this.pickedPath,
-  //   required this.croppedPath,
-  //   required this.onClear,
-  //   required this.result,
-  // });
 
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    final String? displayPath = _croppedFile?.path ?? widget.pickedPath;
+    final String displayPath =
+        _croppedFile?.path ?? widget.sample.pickedFile.path;
 
     return Scaffold(
         appBar: AppBar(
@@ -79,19 +65,16 @@ class _ImageCardState extends State<ImageCard> {
                 child: Card(
                   elevation: 4.0,
                   child: Padding(
-                    padding: const EdgeInsets.all(kIsWeb ? 24.0 : 16.0),
-                    child: (displayPath != null)
-                        ? ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: 0.8 * screenWidth,
-                              maxHeight: 0.7 * screenHeight,
-                            ),
-                            child: kIsWeb
-                                ? Image.network(displayPath)
-                                : Image.file(File(displayPath)),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
+                      padding: const EdgeInsets.all(kIsWeb ? 24.0 : 16.0),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: 0.8 * screenWidth,
+                          maxHeight: 0.7 * screenHeight,
+                        ),
+                        child: kIsWeb
+                            ? Image.network(displayPath)
+                            : Image.file(File(displayPath)),
+                      )),
                 ),
               ),
               const SizedBox(height: 24.0),
@@ -140,13 +123,14 @@ class _ImageCardState extends State<ImageCard> {
             child: const Text('Result:',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 23)),
           ),
-          Text(widget.result ?? "",
+          Text(_result ?? "",
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 23))
         ],
       );
 
   Future<void> _cropImage() async {
-    final CroppedFile? cropped = await ImageController.cropImage(widget.sample.pickedFile);
+    final CroppedFile? cropped =
+        await ImageController.cropImage(widget.sample.pickedFile);
     if (cropped != null) {
       setState(() {
         _croppedFile = cropped;
