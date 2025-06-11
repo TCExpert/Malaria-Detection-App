@@ -132,6 +132,7 @@ class _ImageCardState extends State<ImageCard> {
     final CroppedFile? cropped =
         await ImageController.cropImage(widget.sample.pickedFile);
     if (cropped != null) {
+      widget.sample.croppedFile = cropped;
       setState(() {
         _croppedFile = cropped;
         _result = null; // reset result if image changed
@@ -144,6 +145,7 @@ class _ImageCardState extends State<ImageCard> {
       File(widget.sample.croppedFile.path),
       await InterpreterService().getInterpreter(),
     );
+    widget.sample.result = result;
     setState(() {
       _result = result;
     });

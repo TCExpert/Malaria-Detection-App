@@ -60,15 +60,32 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _body() => _samples == null
+  Widget _body() => (_samples == null || _samples!.isEmpty)
       ? _uploaderCard()
       : ((_samples!.length > 1) ? _listCard() : _imageCard(_samples![0]));
 
   Widget _uploaderCard() => UploaderCard(
-        onUpload: _uploadImages,
+        onUpload: () async {
+          List<Sample> samples = await ImageController.uploadImages();
+          setState(() {
+            _samples = samples;
+          });
+        },
       );
 
-  Widget _imageCard(Sample sample) => ImageCard(sample: sample, onClear: _body);
+  Widget _imageCard(Sample sample) => ImageCard(
+      sample: sample,
+      onClear: () async {
+        if (await showAlertDialog(
+            context, "Do you want to delete this sample?")) {
+          setState(() {
+            _samples!.remove(sample);
+          });
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+        }
+      });
 
   Widget _listCard() => Center(
       child: SampleList(
@@ -78,10 +95,40 @@ class _HomePageState extends State<HomePage> {
                 MaterialPageRoute(builder: (context) => _imageCard(sample)));
           }));
 
-  Future<void> _uploadImages() async {
-    List<Sample> samples = await ImageController.uploadImages();
-    setState(() {
-      _samples = samples;
-    });
+  Future<bool> showAlertDialog(BuildContext context, String message) async {
+    // set up the buttons
+    Widget cancelButton = ElevatedButton(
+      onPressed: () {
+        // returnValue = false;
+        Navigator.of(context).pop(false);
+      },
+      style:
+          ButtonStyle(foregroundColor: WidgetStateProperty.all(Colors.white)),
+      child: const Text("Cancel"),
+    );
+    Widget continueButton = ElevatedButton(
+      onPressed: () {
+        // returnValue = true;
+        Navigator.of(context).pop(true);
+      },
+      style:
+          ButtonStyle(foregroundColor: WidgetStateProperty.all(Colors.white)),
+      child: const Text("Yes"),
+    ); // set up the AlertDialog
+    AlertDialog alert = AlertDialog(
+      title: Text(message),
+      titleTextStyle: const TextStyle(fontSize: 15, color: Color(0xFFBC764A)),
+      actions: [
+        cancelButton,
+        continueButton,
+      ],
+    ); // show the dialog
+    final result = await showDialog<bool?>(
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
+    return result ?? false;
   }
 }
