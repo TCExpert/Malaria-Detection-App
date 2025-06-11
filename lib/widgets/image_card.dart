@@ -1,8 +1,11 @@
+import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:malaria_detection/services/interpreter_service.dart';
+import 'package:malaria_detection/widgets/upload_button.dart';
 
 import '../controllers/image_controller.dart';
 import '../models/sample.dart';
@@ -20,12 +23,15 @@ enum ButtonName {
 class ImageCard extends StatefulWidget {
   final Sample sample;
   final VoidCallback onClear;
+  final VoidCallback onUpload;
+  final bool showUploadButton;
 
-  const ImageCard({
-    super.key,
-    required this.sample,
-    required this.onClear,
-  });
+  const ImageCard(
+      {super.key,
+      required this.sample,
+      required this.onClear,
+      required this.onUpload,
+      required this.showUploadButton});
 
   @override
   State<ImageCard> createState() => _ImageCardState();
@@ -67,14 +73,11 @@ class _ImageCardState extends State<ImageCard> {
                   child: Padding(
                       padding: const EdgeInsets.all(kIsWeb ? 24.0 : 16.0),
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: 0.8 * screenWidth,
-                          maxHeight: 0.7 * screenHeight,
-                        ),
-                        child: kIsWeb
-                            ? Image.network(displayPath)
-                            : Image.file(File(displayPath)),
-                      )),
+                          constraints: BoxConstraints(
+                            maxWidth: 0.8 * screenWidth,
+                            maxHeight: 0.7 * screenHeight,
+                          ),
+                          child: Image.memory(widget.sample.croppedImage!))),
                 ),
               ),
               const SizedBox(height: 24.0),
@@ -124,7 +127,12 @@ class _ImageCardState extends State<ImageCard> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 23)),
           ),
           Text(_result ?? "",
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 23))
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 23)),
+          if (widget.showUploadButton)
+            Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24.0),
+                child: UploadButton(onUpload: widget.onUpload))
         ],
       );
 

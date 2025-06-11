@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 import '../models/sample.dart';
+import '../services/sqlite_service.dart';
 
 class ImageController {
   static Future<String> classifyImage(
@@ -120,11 +121,22 @@ class ImageController {
         .toList();
 
     final List<CroppedFile> croppedFiles =
-    pickedFiles.map((file) => CroppedFile(file.path)).toList();
+        pickedFiles.map((file) => CroppedFile(file.path)).toList();
 
-    return List.generate(pickedFiles.length, (index) {
-      return Sample(
-          pickedFile: pickedFiles[index], croppedFile: croppedFiles[index]);
-    });
+    final samples = <Sample>[];
+
+    for (int i = 0; i <= pickedFiles.length; i++) {
+      final sample = Sample(
+          pickedFile: pickedFiles[i],
+          croppedFile: croppedFiles[i],
+          originalImage: await File(pickedFiles[i].path).readAsBytes(),
+          croppedImage: await File(croppedFiles[i].path).readAsBytes());
+
+      await SqliteService.instance.create(sample);
+      sample.name = "Sample ${sample.id}" ?? "";
+      samples.add(sample);
+    }
+
+    return samples;
   }
 }

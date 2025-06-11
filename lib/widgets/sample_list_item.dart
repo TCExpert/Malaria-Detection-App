@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/sample.dart';
 
@@ -11,8 +13,8 @@ class SampleListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Image.file(
-          File(sample.pickedFile.path),
+        Image.memory(
+          sample.croppedImage!,
           width: 64,
           height: 64,
           fit: BoxFit.cover,
