@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:malaria_detection/controllers/image_controller.dart';
+import 'package:malaria_detection/controllers/sample_controller.dart';
 import 'package:malaria_detection/services/interpreter_service.dart';
 import 'package:malaria_detection/services/sqlite_service.dart';
 import 'package:malaria_detection/widgets/sample_list.dart';
 
 import '../models/sample.dart';
-import '../widgets/image_card.dart';
+import '../utils.dart';
+import '../widgets/sample_card.dart';
 import '../widgets/uploader_card.dart';
 
 class HomePage extends StatefulWidget {
@@ -68,80 +69,53 @@ class _HomePageState extends State<HomePage> {
 
   Widget _uploaderCard() => UploaderCard(onUpload: _upload);
 
-  Widget _imageCard(Sample sample) => ImageCard(
-        sample: sample,
-        onClear: () async {
-          if (await showAlertDialog(
-              context, "Do you want to delete this sample?")) {
-            setState(() {
-              _samples!.remove(sample);
-            });
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          }
-        },
-        onUpload: _upload,
-        showUploadButton: (_samples!.length > 1) ? false : true
-      );
+  Widget _imageCard(Sample sample) => SampleCard(
+      sample: sample,
+      onDelete: (BuildContext context, Sample sample) async {
+        await _deleteSample(context, sample);
+      },
+      onUpload: _upload,
+      showUploadButton: (_samples!.length > 1) ? false : true);
 
   Widget _listCard() => Center(
-      child: SampleList(
-          samples: _samples!,
-          onTap: (Sample sample) {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => _imageCard(sample)));
-          },
-          onUpload: _upload,
+          child: SampleList(
+        samples: _samples!,
+        onTap: (Sample sample) async {
+          await Navigator.push(context,
+              MaterialPageRoute(builder: (context) => _imageCard(sample)));
+          await _loadSamples();
+        },
+        onDelete: (BuildContext context, Sample sample) async {
+          await _deleteSample(context, sample);
+        },
+        onUpload: _upload,
       ));
 
-  Future<bool> showAlertDialog(BuildContext context, String message) async {
-    // set up the buttons
-    Widget cancelButton = ElevatedButton(
-      onPressed: () {
-        // returnValue = false;
-        Navigator.of(context).pop(false);
-      },
-      style:
-          ButtonStyle(foregroundColor: WidgetStateProperty.all(Colors.white)),
-      child: const Text("Cancel"),
-    );
-    Widget continueButton = ElevatedButton(
-      onPressed: () {
-        // returnValue = true;
-        Navigator.of(context).pop(true);
-      },
-      style:
-          ButtonStyle(foregroundColor: WidgetStateProperty.all(Colors.white)),
-      child: const Text("Yes"),
-    ); // set up the AlertDialog
-    AlertDialog alert = AlertDialog(
-      title: Text(message),
-      titleTextStyle: const TextStyle(fontSize: 15, color: Color(0xFFBC764A)),
-      actions: [
-        cancelButton,
-        continueButton,
-      ],
-    ); // show the dialog
-    final result = await showDialog<bool?>(
-      context: context,
-      builder: (BuildContext context) {
-        return alert;
-      },
-    );
-    return result ?? false;
-  }
-
   Future<void> _upload() async {
-    List<Sample> samples = await ImageController.uploadImages();
+    List<Sample> samples = await SampleController.uploadSamples();
     setState(() {
-      _samples = samples;
+      _samples?.addAll(samples);
     });
   }
 
   /// Loads samples from database
   Future<void> _loadSamples() async {
-    final samples = await SqliteService.instance.readAll();
+    final samples = await SqliteService.instance.queryAll();
     setState(() => _samples = samples);
+  }
+
+  Future<void> _deleteSample(BuildContext context, Sample sample) async {
+    if (await Utils.showAlertDialog(
+        context, "Do you want to delete this sample?")) {
+      setState(() {
+        _samples!.remove(sample);
+      });
+
+      await SqliteService.instance.delete(sample.id);
+
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+    }
   }
 }

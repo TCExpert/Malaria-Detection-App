@@ -25,7 +25,7 @@ class SampleListItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                sample.pickedFile.name,
+                sample.name ?? "Sample X",
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 softWrap: false,

@@ -4,16 +4,15 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 
 class Sample {
-  final int? id;
+  late final int? id;
   final XFile pickedFile;
   CroppedFile croppedFile;
   final Uint8List? originalImage;
-  final Uint8List? croppedImage;
-  String name = "";
+  Uint8List? croppedImage;
+  String? name = "";
   String result = "";
 
   Sample({
-    this.id,
     required this.pickedFile,
     required this.croppedFile,
     this.originalImage,
@@ -32,12 +31,13 @@ class Sample {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'pickedPath': pickedFile.path,
       'pickedName': pickedFile.name,
       'croppedPath': croppedFile.path,
       'originalImage': originalImage,
-      'croppedImage': croppedImage
+      'croppedImage': croppedImage,
+      'name': name,
+      'result': result
     };
   }
 

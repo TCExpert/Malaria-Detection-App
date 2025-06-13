@@ -38,27 +38,43 @@ class SqliteService {
     ''');
   }
 
-  Future<Sample> create(Sample sample) async {
+  Future<int> create(Sample sample) async {
     final db = await instance.database;
-    final existing = await db.query(
-      'samples',
-      where: 'pickedPath = ?',
-      whereArgs: [sample.pickedFile.path],
-    );
-
-    if (existing.isNotEmpty) {
-      print('Sample already exists in database.');
-      return Sample.fromMap(existing.first);
-    }
-
-    await db.insert('samples', sample.toMap());
-    return sample;
+    return await db.insert('samples', sample.toMap());
   }
 
-  Future<List<Sample>> readAll() async {
+  Future<int> update(Sample sample) async {
+    final db = await database;
+    return await db.update(
+      'samples',
+      sample.toMap(),
+      where: 'id = ?',
+      whereArgs: [sample.id],
+    );
+  }
+
+  Future<Map<String, dynamic>> queryById(int id) async {
+    Database db = await instance.database;
+    List<Map<String, dynamic>> results =
+        await db.query('samples', where: 'id = ?', whereArgs: [id]);
+
+    return results.single;
+  }
+
+  Future<List<Sample>> queryAll() async {
     final db = await instance.database;
     final result = await db.query('samples');
     return result.map((map) => Sample.fromMap(map)).toList();
+  }
+
+  Future<void> delete(int? sampleId) async {
+    if (sampleId == null) return;
+    final db = await instance.database;
+    await db.delete(
+      'samples',
+      where: 'id = ?',
+      whereArgs: [sampleId],
+    );
   }
 
   Future close() async {

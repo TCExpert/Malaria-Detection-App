@@ -1,10 +1,10 @@
-import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:malaria_detection/controllers/sample_controller.dart';
 import 'package:malaria_detection/services/interpreter_service.dart';
+import 'package:malaria_detection/services/sqlite_service.dart';
 import 'package:malaria_detection/widgets/upload_button.dart';
 
 import '../controllers/image_controller.dart';
@@ -20,32 +20,40 @@ enum ButtonName {
   final String name;
 }
 
-class ImageCard extends StatefulWidget {
+class SampleCard extends StatefulWidget {
   final Sample sample;
-  final VoidCallback onClear;
+  final Future<void> Function(BuildContext, Sample) onDelete;
   final VoidCallback onUpload;
   final bool showUploadButton;
 
-  const ImageCard(
+  const SampleCard(
       {super.key,
       required this.sample,
-      required this.onClear,
+      required this.onDelete,
       required this.onUpload,
       required this.showUploadButton});
 
   @override
-  State<ImageCard> createState() => _ImageCardState();
+  State<SampleCard> createState() => _SampleCardState();
 }
 
-class _ImageCardState extends State<ImageCard> {
-  CroppedFile? _croppedFile;
+class _SampleCardState extends State<SampleCard> {
+  late TextEditingController _nameController;
+  final FocusNode _focusNode = FocusNode();
   String? _result;
 
   @override
   void initState() {
     super.initState();
-    _croppedFile = widget.sample.croppedFile;
     _result = widget.sample.result;
+    _nameController = TextEditingController(text: widget.sample.name ?? "Sample X");
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _focusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -53,12 +61,23 @@ class _ImageCardState extends State<ImageCard> {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    final String displayPath =
-        _croppedFile?.path ?? widget.sample.pickedFile.path;
-
     return Scaffold(
         appBar: AppBar(
-          title: const Text("Sample"),
+          title: EditableText(
+            controller: _nameController,
+            focusNode: _focusNode,
+            style: const TextStyle(
+              fontSize: 20,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+            cursorColor: Colors.white,
+            backgroundCursorColor: Colors.transparent,
+            onChanged: (value) {
+              widget.sample.name = value;
+              SqliteService.instance.update(widget.sample); // Optional: direkt speichern
+            },
+          ),
         ),
         body: Center(
           child: Column(
@@ -94,7 +113,9 @@ class _ImageCardState extends State<ImageCard> {
             children: [
               FloatingActionButton(
                 heroTag: ButtonName.del,
-                onPressed: widget.onClear,
+                onPressed: () {
+                  widget.onDelete(context, widget.sample);
+                },
                 backgroundColor: Colors.redAccent,
                 tooltip: ButtonName.del.name,
                 child: const Icon(Icons.delete),
@@ -140,16 +161,18 @@ class _ImageCardState extends State<ImageCard> {
     final CroppedFile? cropped =
         await ImageController.cropImage(widget.sample.pickedFile);
     if (cropped != null) {
-      widget.sample.croppedFile = cropped;
+      final bytes = await File(cropped.path).readAsBytes();
       setState(() {
-        _croppedFile = cropped;
+        widget.sample.croppedFile = cropped;
+        widget.sample.croppedImage = bytes;
         _result = null; // reset result if image changed
       });
+      await SqliteService.instance.update(widget.sample);
     }
   }
 
   Future<void> _classifyImage() async {
-    final String result = await ImageController.classifyImage(
+    final String result = await SampleController.classifySample(
       File(widget.sample.croppedFile.path),
       await InterpreterService().getInterpreter(),
     );
@@ -157,5 +180,6 @@ class _ImageCardState extends State<ImageCard> {
     setState(() {
       _result = result;
     });
+    await SqliteService.instance.update(widget.sample);
   }
 }

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:malaria_detection/widgets/upload_button.dart';
 import '../models/sample.dart';
+import '../utils.dart';
 import 'sample_list_item.dart';
 
 class SampleList extends StatelessWidget {
   final List<Sample> samples;
-  final void Function(Sample) onTap;
+  final Future<void> Function(Sample) onTap;
+  final Future<void> Function(BuildContext, Sample) onDelete;
   final VoidCallback onUpload;
 
   const SampleList(
       {super.key,
       required this.samples,
       required this.onTap,
+      required this.onDelete,
       required this.onUpload});
 
   @override
@@ -24,7 +27,14 @@ class SampleList extends StatelessWidget {
             // Die Liste der Samples
             for (final sample in samples)
               Dismissible(
-                  key: Key(sample.id.toString()),
+                  direction: DismissDirection.endToStart,
+                  background: slideLeftBackground(),
+                  confirmDismiss: (direction) async {
+                    if (direction == DismissDirection.endToStart) {
+                      onDelete(context, sample);
+                    }
+                  },
+                  key: UniqueKey(),
                   child: InkWell(
                     onTap: () => onTap(sample),
                     child: Container(
