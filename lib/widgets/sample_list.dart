@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:malaria_detection/widgets/upload_button.dart';
 import '../models/sample.dart';
-import '../utils.dart';
 import 'sample_list_item.dart';
 
 class SampleList extends StatelessWidget {

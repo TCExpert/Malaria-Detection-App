@@ -7,7 +7,7 @@ import 'package:malaria_detection/widgets/sample_list.dart';
 
 import '../models/sample.dart';
 import '../utils.dart';
-import '../widgets/sample_card.dart';
+import 'sample_card.dart';
 import '../widgets/uploader_card.dart';
 
 class HomePage extends StatefulWidget {
