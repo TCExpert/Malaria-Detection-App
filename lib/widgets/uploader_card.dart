@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
+import 'package:malaria_detection/widgets/upload_button.dart';
 
 class UploaderCard extends StatelessWidget {
   final VoidCallback onUpload;
@@ -60,9 +61,8 @@ class UploaderCard extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24.0),
-                child: ElevatedButton(
-                  onPressed: onUpload,
-                  child: const Text('Upload'),
+                child: UploadButton(
+                  onUpload: onUpload
                 ),
               ),
             ],

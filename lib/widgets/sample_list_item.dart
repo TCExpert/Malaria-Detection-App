@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/sample.dart';
 
@@ -11,8 +10,8 @@ class SampleListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Image.file(
-          File(sample.pickedFile.path),
+        Image.memory(
+          sample.croppedImage!,
           width: 64,
           height: 64,
           fit: BoxFit.cover,
@@ -23,7 +22,7 @@ class SampleListItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                sample.pickedFile.name,
+                sample.name ?? "Sample X",
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 softWrap: false,
